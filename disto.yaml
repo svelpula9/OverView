@@ -1,0 +1,58 @@
+---
+- hosts: distro
+#  user: root
+  gather_facts: no
+  become: yes
+  become_user: root
+  tasks:
+  - name: Package install for CentOS 7.x ==> xinetd
+    yum:
+     name: xinetd
+     state: latest
+  - name: Package install for CentOS 7.x ==> unzip
+    yum:
+     name: unzip
+     state: latest
+  - name: Copying zip file
+    copy:
+     src: /etc/ansible/packages/master.zip
+     dest: /root/
+  - name: unzip file
+    shell: unzip -o /root/master.zip -d /opt/
+  - name: Copying finale settings
+    shell: '{{item.name}}'
+    with_items:
+      - { name: 'cp /opt/librenms-agent-master/check_mk_agent /usr/bin/check_mk_agent' }
+      - { name: 'chmod +x /usr/bin/check_mk_agent' }
+      - { name: 'cp /opt/librenms-agent-master/check_mk_xinetd /etc/xinetd.d/check_mk' }
+#  //for Centos 6.x
+      - { name: 'cp /opt/librenms-agent-master/check_mk@.service /etc/systemd/system' }
+      - { name: 'cp /opt/librenms-agent-master/check_mk.socket /etc/systemd/system' }
+#  //for Centos 7.x
+      - { name: 'mkdir -p /usr/lib/check_mk_agent/plugins /usr/lib/check_mk_agent/local' }
+      - { name: 'cp /opt/librenms-agent-master/agent-local/ceph /usr/lib/check_mk_agent/local/' }
+  - name: Copying distro file
+    copy:
+     src: /etc/ansible/packages/distro
+     dest: /usr/bin/
+  - name: Copying rpm file
+    copy:
+     src: /etc/ansible/packages/rpm
+     dest: /usr/lib/check_mk_agent/local/
+  - name: Set it to executable
+    shell: '{{item.name}}'
+    with_items:
+      - { name: 'chmod +x  /usr/lib/check_mk_agent/local/rpm' }
+      - { name: 'chmod +x  /usr/lib/check_mk_agent/local/ceph' }
+      - { name: 'mkdir -p /var/cache/librenms' }
+#  //for Centos 6.x
+# - name: Start the check_mk service
+#   service:
+#    name: xinetd
+#    state: restarted
+#  //for Centos 7.x
+  - name: Start the check_mk service
+    service:
+      name: check_mk.socket
+      state: restarted
+      enabled: yes
